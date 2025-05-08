@@ -2,57 +2,58 @@ pipeline {
     agent any
 
     stages {
-        // Stage 1: Checkout Git Repository
+        stage('Clean Workspace') {
+            steps {
+                cleanWs() // Crucial: Cleans workspace before checkout
+            }
+        }
+        
         stage('Checkout') {
             steps {
-                git(
-                    url: 'https://github.com/LM213/jenkins-pipeline1-demo.git',
-                    branch: 'main',
-                    credentialsId: '' // Remove or add your Jenkins Git credentials ID if private
-                )
-                sh 'git --version' // Verify Git (optional)
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    extensions: [],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/LM213/jenkins-pipeline1-demo.git'
+                    ]]
+                ])
+                
+                // Verify the checkout worked
+                sh '''
+                    echo "Current directory: $(pwd)"
+                    git status
+                    ls -al
+                '''
             }
         }
 
-        // Stage 2: Build
         stage('Build') {
             steps {
-                echo 'Building the application...'
-                sh 'npm install' // Assumes your repo has a package.json
+                sh 'npm install'
             }
         }
 
-        // Stage 3: Test
         stage('Test') {
             steps {
-                echo 'Running tests...'
-                sh 'npm test || echo "No tests found, skipping..."'
+                sh 'npm test || echo "Tests skipped"'
             }
         }
 
-        // Stage 4: Deploy (Simulated)
         stage('Deploy') {
             steps {
-                echo 'Deploying the application...'
-                sh 'echo "Deploy step completed (simulated)"'
-                // Replace with actual deploy commands (e.g., `kubectl apply`, `scp`)
+                sh 'echo "Deployment simulation"'
             }
         }
     }
 
-    // Post-Build Actions
     post {
-        always {
-            echo 'Pipeline completed. Status: ${currentBuild.result}'
-            cleanWs() // Clean workspace after run (optional)
+        failure {
+            echo 'Pipeline failed! Check the repository URL and workspace permissions.'
+            // mail to: 'admin@example.com', subject: 'Pipeline Failed'
         }
         success {
-            echo 'Pipeline succeeded! 🎉'
-            // mail to: 'team@example.com', subject: 'SUCCESS: Pipeline', body: 'All good!'
-        }
-        failure {
-            echo 'Pipeline failed! ❌'
-            // mail to: 'team@example.com', subject: 'FAILURE: Pipeline', body: 'Check Jenkins!'
+            echo 'Pipeline succeeded!'
         }
     }
 }

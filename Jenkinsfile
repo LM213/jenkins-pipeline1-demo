@@ -7,7 +7,8 @@ pipeline {
     }
 
     environment {
-        DOCKER_IMAGE = 'LM213/flask-docker-app:latest'
+        // 🔧 Replace with your actual Docker Hub username
+        DOCKER_IMAGE = 'docker.io/lm2130/flask-docker-app:latest'
         DOCKER_CREDENTIALS_ID = 'docker-hub-creds'
     }
 
@@ -26,7 +27,11 @@ pipeline {
 
         stage('Push to Docker Hub') {
             steps {
-                withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                withCredentials([usernamePassword(
+                    credentialsId: "${DOCKER_CREDENTIALS_ID}",
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
                     sh '''
                         echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                         docker push $DOCKER_IMAGE

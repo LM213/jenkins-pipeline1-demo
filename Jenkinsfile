@@ -1,59 +1,39 @@
 pipeline {
-    agent any
-
-    stages {
-        stage('Clean Workspace') {
-            steps {
-                cleanWs() // Crucial: Cleans workspace before checkout
-            }
-        }
-        
-        stage('Checkout') {
-            steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    extensions: [],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/LM213/jenkins-pipeline1-demo.git'
-                    ]]
-                ])
-                
-                // Verify the checkout worked
-                sh '''
-                    echo "Current directory: $(pwd)"
-                    git status
-                    ls -al
-                '''
-            }
-        }
-
-        stage('Build') {
-            steps {
-                sh 'npm install'
-            }
-        }
-
-        stage('Test') {
-            steps {
-                sh 'npm test || echo "Tests skipped"'
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                sh 'echo "Deployment simulation"'
-            }
+    agent {
+        docker {
+            image 'docker:latest'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
 
-    post {
-        failure {
-            echo 'Pipeline failed! Check the repository URL and workspace permissions.'
-            // mail to: 'admin@example.com', subject: 'Pipeline Failed'
+    environment {
+        DOCKER_IMAGE = 'LM213/flask-docker-app:latest'
+        DOCKER_CREDENTIALS_ID = 'docker-hub-creds'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
         }
-        success {
-            echo 'Pipeline succeeded!'
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t $DOCKER_IMAGE .'
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push $DOCKER_IMAGE
+                        docker logout
+                    '''
+                }
+            }
         }
     }
 }
